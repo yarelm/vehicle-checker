@@ -1,0 +1,70 @@
+main:
+    params: [args]
+    steps:
+    - initial:
+        assign:
+          - type: "מסחרי"
+          - project_id: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
+          - dataset_id: "`yarel-playground.cars.cars_history`"
+        next: get_message
+    - get_message:
+        call: http.get
+        args:
+          url: https://data.gov.il/api/3/action/datastore_search
+          headers:
+            Content-Type: "text/plain"
+          query:
+            resource_id: "053cea08-09bc-40ec-8f7a-156f0677aff3"
+            q: ${args.car_id}
+        result: car_record
+        next: details
+    - details:
+        assign:
+          - baalut: ${car_record.body.result.records[0].baalut}
+          - brand: ${car_record.body.result.records[0].tozeret_nm}
+          - model: ${car_record.body.result.records[0].kinuy_mishari}
+          - year: ${car_record.body.result.records[0].shnat_yitzur}
+          - front_tire: ${car_record.body.result.records[0].zmig_kidmi}
+          - back_tire: ${car_record.body.result.records[0].zmig_ahori}
+        next: get_image
+    - get_image:
+        call: http.get
+        args:
+          url: https://customsearch.googleapis.com/customsearch/v1
+          headers:
+            Accept: "application/json"
+          query:
+            key: ${args.search_id}
+            q: ${string(brand) + " " + string(model) + " " + string(year)}
+            cx: ${args.search_cx}
+            searchType: "image"
+
+        result: image
+        next: vehicle_type
+
+    - vehicle_type:
+        switch:
+          - condition: ${baalut == "פרטי"}
+            next: private
+    - private:
+        assign:
+          - type: "פרטי"
+        next: insert_data
+
+    - insert_data:
+        call: googleapis.bigquery.v2.jobs.query
+        args:
+          projectId: ${project_id}
+          body:
+            useLegacySql: false
+            query: ${"INSERT "+dataset_id+" (model, type, id, brand, year, image_url) VALUES ('"+string(model)+"', '"+string(type)+"', '" + string(args.car_id) + "', '" + string(brand) + "', '" + string(year) + "', '" + image.body.items[0].link + "')"}
+    - call_reciept:
+          call: http.post
+          args:
+              url: https://receipt-a3d4cv5haa-ez.a.run.app
+              body:
+                  Text: ${"Vehicle type is "+string(type)+", brand is "+string(brand)+", model is "+string(model)+", year is "+string(year)+ " "+image.body.items[0].link}
+              auth:
+                  type: OIDC
+    - return_value:
+        return: ${"Vehicle type is "+string(type)+", brand is "+string(brand)+", model is "+string(model)+", year is "+string(year)+ " "+image.body.items[0].link}
