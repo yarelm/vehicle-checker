@@ -8,24 +8,39 @@ main:
           - dataset_id: "`yarel-playground.cars.cars_history`"
         next: get_message
     - get_message:
-        call: http.get
-        args:
-          url: https://data.gov.il/api/3/action/datastore_search
-          headers:
-            Content-Type: "text/plain"
-          query:
-            resource_id: "053cea08-09bc-40ec-8f7a-156f0677aff3"
-            q: ${args.car_id}
-        result: car_record
+        try:
+          call: http.get
+          args:
+            url: https://data.gov.il/api/3/action/datastore_search
+            headers:
+              Content-Type: "text/plain"
+            query:
+              resource_id: "053cea08-09bc-40ec-8f7a-156f0677aff3"
+              q: ${args.car_id}
+          result: car_record
+        retry: ${http.default_retry}
+        except:
+          steps:
+            - http_failure:
+                call: failure
+                args:
+                  args: args
         next: details
     - details:
-        assign:
-          - baalut: ${car_record.body.result.records[0].baalut}
-          - brand: ${car_record.body.result.records[0].tozeret_nm}
-          - model: ${car_record.body.result.records[0].kinuy_mishari}
-          - year: ${car_record.body.result.records[0].shnat_yitzur}
-          - front_tire: ${car_record.body.result.records[0].zmig_kidmi}
-          - back_tire: ${car_record.body.result.records[0].zmig_ahori}
+        try:
+          assign:
+            - baalut: ${car_record.body.result.records[0].baalut}
+            - brand: ${car_record.body.result.records[0].tozeret_nm}
+            - model: ${car_record.body.result.records[0].kinuy_mishari}
+            - year: ${car_record.body.result.records[0].shnat_yitzur}
+            - front_tire: ${car_record.body.result.records[0].zmig_kidmi}
+            - back_tire: ${car_record.body.result.records[0].zmig_ahori}
+        except:
+          steps:
+            - details_failure:
+                call: failure
+                args:
+                  args: args
         next: get_image
     - get_image:
         call: http.get
@@ -63,8 +78,30 @@ main:
           args:
               url: https://receipt-a3d4cv5haa-ez.a.run.app
               body:
-                  Text: ${"Vehicle type is "+string(type)+", brand is "+string(brand)+", model is "+string(model)+", year is "+string(year)+ " "+image.body.items[0].link}
+                  VehicleID: ${args.car_id}
+                  Brand: ${brand}
+                  Model: ${model}
+                  Year: ${string(year)}
+                  FrontTire: ${front_tire}
+                  BackTire: ${back_tire}
+                  ToEmail: ${args.to_email}
+                  ImageURL: ${image.body.items[0].link}
               auth:
                   type: OIDC
+          next: end
+
     - return_value:
         return: ${"Vehicle type is "+string(type)+", brand is "+string(brand)+", model is "+string(model)+", year is "+string(year)+ " "+image.body.items[0].link}
+failure:
+  params: [args]
+  steps:
+    - send_failure_email:
+        call: http.post
+        args:
+            url: https://receipt-a3d4cv5haa-ez.a.run.app/failure
+            body:
+                VehicleID: ${args.car_id}
+                ToEmail: ${args.to_email}
+            auth:
+                type: OIDC
+        next: end
