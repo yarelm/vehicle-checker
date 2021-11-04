@@ -4,6 +4,20 @@ import cv2
 import re
 from google.cloud import vision 
 from datetime import datetime
+from google.cloud import storage
+import numpy as np
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route("/")
+def hello_world():
+    name = os.environ.get("NAME", "World")
+    return recognise_license_plate()
+    # return "Hello {}!".format(name)
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
 def recognise_license_plate():
     # start_time =datetime.now()
@@ -17,19 +31,29 @@ def recognise_license_plate():
     # with io.open(img_path, 'rb') as image_file:
     #     content = image_file.read()
 
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket('yarel-license-plate')
+    blob = bucket.get_blob('img.jpg')
+    file_bytes = blob.download_as_bytes()
+
+
     height = 800
     width = 600
-    img = cv2.imread('301-F.jpg',cv2.IMREAD_GRAYSCALE)
+    nparr = np.fromstring(file_bytes, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
+
+    # img = cv2.imread('301-F.jpg',cv2.IMREAD_GRAYSCALE)
     img = cv2.resize(img,(800, int((height*800)/width)))
-    cv2.imwrite("output.jpg", img)
+    img_str = cv2.imencode('.jpg', img)[1].tobytes()
+    # cv2.imwrite("output.jpg", img)
     
     client = vision.ImageAnnotatorClient()
 
-    with open('./output.jpg', 'rb') as image_file:
-        content = image_file.read()
+    # with open('./output.jpg', 'rb') as image_file:
+    #     content = image_file.read()
 
     response = client.annotate_image({
-        'image': {'content': content},
+        'image': {'content': img_str},
     # 'image': {'source': {'image_uri': 'gs://yarel-license-plate/1635841842507.jpg'}},
     'features': [
         {'type_': vision.Feature.Type.OBJECT_LOCALIZATION},
@@ -100,9 +124,11 @@ def recognise_license_plate():
         # print(text.description)
         plate = re.sub("[^0-9]", "", text.description)
         print('License plate is: ' + plate)
+        return 'License plate is: ' + plate
 
+        
 
     # cv2.imshow('image',img)
     # cv2.waitKey(0)
 
-recognise_license_plate()
+# recognise_license_plate()
