@@ -37,7 +37,7 @@ def recognise_license_plate():
     img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
 
     # img = cv2.imread('301-F.jpg',cv2.IMREAD_GRAYSCALE)
-    img = cv2.resize(img,(800, int((height*800)/width)))
+    # img = cv2.resize(img,(800, int((height*800)/width)))
     img_str = cv2.imencode('.jpg', img)[1].tobytes()
     # cv2.imwrite("output.jpg", img)
     
@@ -103,6 +103,11 @@ def recognise_license_plate():
     img = img[vertices[0][1]:vertices[2][1], vertices[0][0]:vertices[2][0]]
 
     cv2.imwrite("plate.jpg", img)
+
+    blob = bucket.blob("plate.jpg")
+
+    blob.upload_from_filename("plate.jpg")
+
 
     with open('./plate.jpg', 'rb') as image_file:  # open colour image
         content = image_file.read()
