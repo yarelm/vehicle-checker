@@ -51,9 +51,6 @@ app.post('/', async (req, res) => {
 
   fileLocation = req.files.carPhoto.tempFilePath;
 
-
-  // req.files.car_photo.mv()
-
   imgFileName = uuid.v4() + '.jpg';
   await uploadImageFile(fileLocation, imgFileName).catch(console.error);
 

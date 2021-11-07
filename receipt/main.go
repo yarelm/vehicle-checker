@@ -27,7 +27,6 @@ type RequestVehicle struct {
 }
 
 func main() {
-
 	log.Print("starting server...")
 	http.HandleFunc("/failure", failureHandler)
 	http.HandleFunc("/", handler)
@@ -60,12 +59,8 @@ func failureHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("req %+v", req)
-
 	sendEmail(fmt.Sprintf("Vehicle ID Info: %v", req.VehicleID), "There was an error :(", req.ToEmail)
-
 	w.WriteHeader(http.StatusOK)
-
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -76,8 +71,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	log.Printf("req %+v", req)
 
 	sendEmail(fmt.Sprintf("Vehicle ID Info: %v", req.VehicleID), fmt.Sprintf("Vehicle Info: %+v", req.VehicleDetails), req.ToEmail)
 	w.WriteHeader(http.StatusOK)
@@ -100,5 +93,4 @@ func sendEmail(subject, text, toEmail string) {
 		fmt.Println(response.Body)
 		fmt.Println(response.Headers)
 	}
-
 }
