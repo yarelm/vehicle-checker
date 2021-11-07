@@ -6,7 +6,7 @@ from google.cloud import vision
 from datetime import datetime
 from google.cloud import storage
 import numpy as np
-from flask import Flask
+from flask import Flask, request
 
 app = Flask(__name__)
 
@@ -20,20 +20,14 @@ if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
 def recognise_license_plate():
-    # start_time =datetime.now()
-    # img = cv2.imread(img_path)
-    # height, width = img.shape[:2]
-    # img = cv2.resize(img,(800, int((height*800)/width)))
-    # cv2.imshow('Original image',img) 
-    # cv2.imwrite(SOURCE_PATH+"output.jpg", img)
-    # img_path= SOURCE_PATH+ "output.jpg"
-    # client = vision.ImageAnnotatorClient()
-    # with io.open(img_path, 'rb') as image_file:
-    #     content = image_file.read()
+
+    bucket_name = request.args.get('bucket_name');
+    img_file_name = request.args.get('img_file_name');
+    print(bucket_name, img_file_name)
 
     storage_client = storage.Client()
-    bucket = storage_client.get_bucket('yarel-license-plate')
-    blob = bucket.get_blob('img.jpg')
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.get_blob(img_file_name)
     file_bytes = blob.download_as_bytes()
 
 
@@ -86,11 +80,12 @@ def recognise_license_plate():
     
     # print(response.localized_object_annotations)
 
+    vertices = []
+
     lo_annotations = response.localized_object_annotations
     for obj in lo_annotations:
         if obj.name == 'License plate' or obj.name == 'Vehicle Registration Plate':
             print(obj.bounding_poly.normalized_vertices)
-
             vertices = [(int(vertex.x * width), int(vertex.y * height)) for vertex in obj.bounding_poly.normalized_vertices]
             # vertices = [(vertex.x, vertex.y)
                         # for vertex in obj.bounding_poly.normalized_vertices]
@@ -100,6 +95,9 @@ def recognise_license_plate():
             # LOGGER.debug('License plate detected: %s', vertices)
 
 
+    if len(vertices) == 0:
+        print('No license plate detected')
+        return ''
     # print(vertices[0], vertices[2])
     # print(img.shape)
     img = img[vertices[0][1]:vertices[2][1], vertices[0][0]:vertices[2][0]]
@@ -124,7 +122,7 @@ def recognise_license_plate():
         # print(text.description)
         plate = re.sub("[^0-9]", "", text.description)
         print('License plate is: ' + plate)
-        return 'License plate is: ' + plate
+        return plate
 
         
 

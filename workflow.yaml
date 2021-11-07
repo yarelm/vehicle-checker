@@ -6,6 +6,35 @@ main:
           - type: "מסחרי"
           - project_id: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
           - dataset_id: "`yarel-playground.cars.cars_history`"
+        next: extract_license_plate_id
+    - extract_license_plate_id:
+          call: http.get
+          args:
+            url: https://vision-a3d4cv5haa-ez.a.run.app
+            headers:
+              Content-Type: "text/plain"
+            query:
+              bucket_name: ${args.car_photos_bucket_name}
+              img_file_name: ${args.car_photo_file_name}
+            auth:
+                  type: OIDC
+          result: car_license_plate
+          next: log_license_plate
+    - log_license_plate:
+        call: sys.log
+        args:
+          text: ${car_license_plate.body}
+          severity: "INFO" # Optional
+        next: check_if_found_license_plate
+    - check_if_found_license_plate:
+        switch:
+          - condition: ${car_license_plate.body == ""}
+            steps:
+              - plate_failure:
+                  call: failure
+                  args:
+                    to_email: ${args.to_email}
+                  next: end
         next: get_message
     - get_message:
         try:
@@ -16,7 +45,7 @@ main:
               Content-Type: "text/plain"
             query:
               resource_id: "053cea08-09bc-40ec-8f7a-156f0677aff3"
-              q: ${args.car_id}
+              q: ${car_license_plate.body}
           result: car_record
         retry: ${http.default_retry}
         except:
@@ -24,7 +53,8 @@ main:
             - http_failure:
                 call: failure
                 args:
-                  args: args
+                  to_email: ${args.to_email}
+                next: end
         next: details
     - details:
         try:
@@ -40,7 +70,8 @@ main:
             - details_failure:
                 call: failure
                 args:
-                  args: args
+                  to_email: ${args.to_email}
+                next: end
         next: get_image
     - get_image:
         call: http.get
@@ -72,13 +103,13 @@ main:
           projectId: ${project_id}
           body:
             useLegacySql: false
-            query: ${"INSERT "+dataset_id+" (model, type, id, brand, year, image_url) VALUES ('"+string(model)+"', '"+string(type)+"', '" + string(args.car_id) + "', '" + string(brand) + "', '" + string(year) + "', '" + image.body.items[0].link + "')"}
+            query: ${"INSERT "+dataset_id+" (model, type, id, brand, year, image_url) VALUES ('"+string(model)+"', '"+string(type)+"', '" + car_license_plate.body + "', '" + text.replace_all(string(brand), "'", "") + "', '" + string(year) + "', '" + image.body.items[0].link + "')"}
     - call_reciept:
           call: http.post
           args:
               url: https://receipt-a3d4cv5haa-ez.a.run.app
               body:
-                  VehicleID: ${args.car_id}
+                  VehicleID: ${car_license_plate.body}
                   Brand: ${brand}
                   Model: ${model}
                   Year: ${string(year)}
@@ -93,15 +124,15 @@ main:
     - return_value:
         return: ${"Vehicle type is "+string(type)+", brand is "+string(brand)+", model is "+string(model)+", year is "+string(year)+ " "+image.body.items[0].link}
 failure:
-  params: [args]
+  params: [to_email]
   steps:
     - send_failure_email:
         call: http.post
         args:
             url: https://receipt-a3d4cv5haa-ez.a.run.app/failure
             body:
-                VehicleID: ${args.car_id}
-                ToEmail: ${args.to_email}
+                # VehicleID: ${car_license_plate}
+                ToEmail: ${to_email}
             auth:
                 type: OIDC
         next: end

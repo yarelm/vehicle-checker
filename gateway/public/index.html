@@ -5,11 +5,13 @@
 	<title> Vehicle Checker </title>
 </head>
 <body>
-	<form action="/" method="POST">
+	<form action="/" method="POST" encType="multipart/form-data">
 		<fieldset>
 				<h3>Check Vehicle</h3>
 				<label>Vehicle ID</label>
 				<input type ="text" id = 'car_id' name="car_id" placeholder="" required>
+				<br><br>
+				<input type="file" name="carPhoto" accept="image/jpeg">
 				<br><br>
 				<label>Your Email</label>
 				<input type ="text" id = 'to_email' name="to_email" placeholder="" required>
