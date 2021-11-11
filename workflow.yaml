@@ -107,7 +107,7 @@ main:
     - call_reciept:
           call: http.post
           args:
-              url: https://receipt-a3d4cv5haa-ez.a.run.app
+              url: https://notify-a3d4cv5haa-ez.a.run.app
               body:
                   VehicleID: ${car_license_plate.body}
                   Brand: ${brand}
@@ -129,7 +129,7 @@ failure:
     - send_failure_email:
         call: http.post
         args:
-            url: https://receipt-a3d4cv5haa-ez.a.run.app/failure
+            url: https://notify-a3d4cv5haa-ez.a.run.app
             body:
                 # VehicleID: ${car_license_plate}
                 ToEmail: ${to_email}
