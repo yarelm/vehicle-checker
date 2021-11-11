@@ -39,9 +39,6 @@ app.get('/', function(req,res){
 app.post('/', async (req, res) => {
   const name = process.env.NAME || 'World';
   
-  if (!req.body.car_id)
-      return console.error('missing car id');
-
   if (!req.body.to_email)
     return console.error('missing dest email');
 
@@ -59,7 +56,6 @@ app.post('/', async (req, res) => {
       const createExecutionRes = await client.createExecution({
           execution: {
               argument: JSON.stringify({
-                car_id: req.body.car_id,
                 car_photos_bucket_name: bucketName,
                 car_photo_file_name: imgFileName,
                 to_email: req.body.to_email,
