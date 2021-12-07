@@ -7,6 +7,7 @@ from datetime import datetime
 from google.cloud import storage
 import numpy as np
 from flask import Flask, request
+from PIL import Image, ImageFilter
 
 app = Flask(__name__)
 
@@ -32,6 +33,7 @@ def recognise_license_plate():
     width = 600
     nparr = np.fromstring(file_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
+    img_color = cv2.imdecode(nparr, cv2.IMREAD_ANYCOLOR)
     img_str = cv2.imencode('.jpg', img)[1].tobytes()
     
     client = vision.ImageAnnotatorClient()
@@ -57,9 +59,29 @@ def recognise_license_plate():
     if len(vertices) == 0:
         print('No license plate detected')
         return ''
-    img = img[vertices[0][1]:vertices[2][1], vertices[0][0]:vertices[2][0]]
+    img_color = img_color[vertices[0][1]:vertices[2][1], vertices[0][0]:vertices[2][0]]
 
-    cv2.imwrite("plate.jpg", img)
+    cv2.imwrite("color.jpg", img_color)
+
+    blob = bucket.blob("color.jpg")
+    blob.upload_from_filename("color.jpg")
+
+    mask_image=cv2.cvtColor(img_color,cv2.COLOR_BGR2HSV)
+
+     # Create mask image with the only object as yellow color
+    mask = cv2.inRange(mask_image,(20, 100, 20), (35, 255, 255) )
+
+    ## morph-op to remove horizone lines
+    kernel = np.ones((5,1), np.uint8)
+    mask2 = cv2.morphologyEx(mask, cv2.MORPH_OPEN,  kernel)
+
+    ys, xs = np.nonzero(mask2)
+    ymin, ymax = ys.min(), ys.max()
+    xmin, xmax = xs.min(), xs.max()
+
+    croped = img_color[ymin:ymax, xmin:xmax]
+
+    cv2.imwrite("plate.jpg", croped)
 
     blob = bucket.blob("plate.jpg")
     blob.upload_from_filename("plate.jpg")
