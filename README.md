@@ -2,9 +2,9 @@
 
 The solution is composed of these services:
 
-* Gateway Service (Deployed in Cloud Run)
-* Vision Service (Deployed in Cloud Run)
-* Notify Service (Deployed in Cloud Run)
+* Gateway Service (Written in NodeJS, Deployed in Cloud Run)
+* Vision Service (Written in Python, Deployed in Cloud Run)
+* Notify Service (Written in Golang, Deployed in Cloud Run)
 * The workflow (Deployed in GCP Workflows)
 
 ## Gateway Service
