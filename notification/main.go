@@ -18,7 +18,6 @@ type VehicleDetails struct {
 	Year      string
 	FrontTire string
 	BackTire  string
-	ImageURL  string
 }
 
 type RequestVehicle struct {

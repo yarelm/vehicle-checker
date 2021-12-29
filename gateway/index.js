@@ -16,8 +16,6 @@ const {ExecutionsClient} = require('@google-cloud/workflows');
 const client = new ExecutionsClient();
 
 const projectId = process.env.GOOGLE_CLOUD_PROJECT;
-const searchId = process.env.SEARCH_ID;
-const searchCx = process.env.SEARCH_CX;
 const workflow = 'mail';
 
 const storage = new Storage();
@@ -59,8 +57,6 @@ app.post('/', async (req, res) => {
                 car_photos_bucket_name: bucketName,
                 car_photo_file_name: imgFileName,
                 to_email: req.body.to_email,
-                search_id: searchId,
-                search_cx: searchCx,
               }),
           },
           parent: client.workflowPath(projectId, 'europe-west4', workflow),
@@ -79,13 +75,6 @@ app.post('/', async (req, res) => {
 
 if (!projectId)
   return console.error('ERROR: GOOGLE_CLOUD_PROJECT is required.');
-
-if (!searchId)
-  return console.error('ERROR: SEARCH_ID is required.');
-
-if (!searchCx)
-  return console.error('ERROR: SEARCH_CX is required.');
-
 
 const port = process.env.PORT || 8080;
 app.listen(port, () => {

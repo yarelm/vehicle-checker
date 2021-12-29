@@ -72,20 +72,6 @@ main:
                 args:
                   to_email: ${args.to_email}
                 next: end
-        next: get_image
-    - get_image:
-        call: http.get
-        args:
-          url: https://customsearch.googleapis.com/customsearch/v1
-          headers:
-            Accept: "application/json"
-          query:
-            key: ${args.search_id}
-            q: ${string(brand) + " " + string(model) + " " + string(year)}
-            cx: ${args.search_cx}
-            searchType: "image"
-
-        result: image
         next: vehicle_type
 
     - vehicle_type:
@@ -96,14 +82,13 @@ main:
         assign:
           - type: "פרטי"
         next: insert_data
-
     - insert_data:
         call: googleapis.bigquery.v2.jobs.query
         args:
           projectId: ${project_id}
           body:
             useLegacySql: false
-            query: ${"INSERT "+dataset_id+" (model, type, id, brand, year, image_url) VALUES ('"+string(model)+"', '"+string(type)+"', '" + car_license_plate.body + "', '" + text.replace_all(string(brand), "'", "") + "', '" + string(year) + "', '" + image.body.items[0].link + "')"}
+            query: ${"INSERT "+dataset_id+" (model, type, id, brand, year) VALUES ('"+string(model)+"', '"+string(type)+"', '" + car_license_plate.body + "', '" + text.replace_all(string(brand), "'", "") + "', '" + string(year) + "')"}
     - call_reciept:
           call: http.post
           args:
@@ -116,13 +101,12 @@ main:
                   FrontTire: ${front_tire}
                   BackTire: ${back_tire}
                   ToEmail: ${args.to_email}
-                  ImageURL: ${image.body.items[0].link}
               auth:
                   type: OIDC
           next: end
 
     - return_value:
-        return: ${"Vehicle type is "+string(type)+", brand is "+string(brand)+", model is "+string(model)+", year is "+string(year)+ " "+image.body.items[0].link}
+        return: ${"Vehicle type is "+string(type)+", brand is "+string(brand)+", model is "+string(model)+", year is "+string(year)}
 failure:
   params: [to_email]
   steps:
@@ -131,7 +115,6 @@ failure:
         args:
             url: https://notification-a3d4cv5haa-ez.a.run.app
             body:
-                # VehicleID: ${car_license_plate}
                 ToEmail: ${to_email}
             auth:
                 type: OIDC
